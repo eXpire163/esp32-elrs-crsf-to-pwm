@@ -21,6 +21,11 @@
 #define A_IN1 1  // Motor A INA
 #define A_IN2 2  // Motor A INB
 
+#define B_IN1 3  // Motor B INA
+#define B_IN2 4  // Motor B INB
+
+
+
 // Speed of the motor (PWM)
 int motorSpeed = 128; // Range: 0 to 255
 
@@ -32,6 +37,7 @@ uint8_t _rcs_buf[25] {};
 uint16_t _raw_rc_values[RC_INPUT_MAX_CHANNELS] {};
 uint16_t _raw_rc_count{};
 
+int deadband = 10; // deadband for motor control
 int aileronsPin = 12;
 int elevatorPin = 13;
 int throttlePin = 14;
@@ -57,26 +63,34 @@ void SetServoPos(float percent, int pwmChannel)
    // ledcWrite(pwmChannel, duty);
 }
 
-void runMotor1(int speed) {
+void mapSpeed(int speed, int& in1, int& in2) {
+  in1 = 0;
+  in2 = 0;
 
-  Serial.print("speed: ");
+   Serial.print("speed: ");
    Serial.print(speed);
    Serial.print(" c:  ");
-  if (speed > 55) {
+  if (speed > 1500+deadband) {
     // Move forward
-    analogWrite(A_IN1, map(speed,50,110,0,255));
-    Serial.print(map(speed,50,110,0,255));
-    analogWrite(A_IN2, 0);
-  } else if (speed < 45) {
-    // Move backward
-    analogWrite(A_IN1, 0);
-    analogWrite(A_IN2, map(speed,-5,50,255,0));
-    Serial.print(map(speed,-5,50,255,0));
-  } else {
-    // Stop
-    analogWrite(A_IN1, 0);
-    analogWrite(A_IN2, 0);
+    in1 = map(speed,1500,2000,0,255);
+  } else if (speed < 1500-deadband) {
+    in2 = map(speed,1500,100,0,255);
   }
+}
+
+void runMotor1(int speed) {
+
+   Serial.print("speed: ");
+   Serial.print(speed);
+
+   int in1, in2;
+   mapSpeed(speed, in1, in2);
+
+  
+    analogWrite(A_IN1, in1);
+    analogWrite(A_IN2, in2);
+    
+
   // Set motor speed (PWM)
   // analogWrite(ENA, speed); // Assuming ENA is the PWM pin for Motor A
   Serial.println();
@@ -87,6 +101,9 @@ void setup() {
 
   pinMode(A_IN1, OUTPUT);
   pinMode(A_IN2, OUTPUT);
+
+  pinMode(B_IN1, OUTPUT);
+  pinMode(B_IN2, OUTPUT);
 
   mySerial.begin(420000); // UART0
   Serial.begin(460800);  // USB serial
@@ -127,16 +144,16 @@ void loop() { //Choose Serial1 or Serial2 as required
       // Serial.print("\tChannel 5: ");
       // Serial.println(_raw_rc_values[4]);
 
-      int aileronsMapped = map(_raw_rc_values[0], 1000, 2000, 0, 100);
-      int elevatorMapped = map(_raw_rc_values[1], 1000, 2000, 0, 100);
-      int throttleMapped = map(_raw_rc_values[2], 1000, 2000, 0, 100);
-      int rudderMapped = map(_raw_rc_values[3], 1000, 2000, 0, 100);
-      int switchMapped = map(_raw_rc_values[4], 1000, 2000, 0, 100);
+      int aileronsMapped = _raw_rc_values[0];
+      int elevatorMapped = _raw_rc_values[1];
+      int throttleMapped = _raw_rc_values[2];
+      int rudderMapped = _raw_rc_values[3];
+      int switchMapped = _raw_rc_values[4];
 
-      SetServoPos(aileronsMapped, aileronsPWMChannel);
-      SetServoPos(elevatorMapped, elevatorPWMChannel);
-      SetServoPos(throttleMapped, throttlePWMChannel);
-      SetServoPos(rudderMapped, rudderPWMChannel);
+      // SetServoPos(aileronsMapped, aileronsPWMChannel);
+      // SetServoPos(elevatorMapped, elevatorPWMChannel);
+      // SetServoPos(throttleMapped, throttlePWMChannel);
+      // SetServoPos(rudderMapped, rudderPWMChannel);
 
                    // Move forward for 2 seconds
 
